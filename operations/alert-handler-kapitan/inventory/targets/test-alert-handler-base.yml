@@ -1,0 +1,86 @@
+classes:
+  - component.alert-handler
+  - provision.kubernetes
+parameters:
+  _param_:
+    target_name: test-alert-handler-base
+    kubernetes_namespace: monitor
+    # A Secret you create out of band; each key is one credential.
+    alert_handler_secret_name: alert-handler-credentials
+    alert_handler_runbooks:
+      # NB: no ${...} in a script embedded in the inventory - reclass reads that
+      # as its own reference syntax and fails to resolve it. Plain $1 is fine.
+      recycle-deployment.sh: |
+        #!/bin/sh
+        # Runbooks get the alert as ALERT_* and only the credentials the action
+        # names in secret_env. $1/$2 come from the action's args.
+        set -eu
+        echo "recycling $1/$2 after $ALERT_LABEL_ALERTNAME"
+        kubectl -n "$1" rollout restart "deployment/$2"
+    alert_handler_settings:
+      dry_run: false
+      cooldown: 900
+      action_timeout: 30
+      workers: 4
+      allowed_namespaces:
+        - monitor
+    # `~` replaces the list from the component class instead of appending to
+    # it, which is reclass's default for lists and would leave the class's
+    # log-everything rule in front of these.
+    ~alert_handler_rules:
+      # Crash-looping workload: restart it once every 15 minutes at most, and
+      # say so in chat. `deployment` comes from the alert's own labels.
+      - name: restart-crashlooping-deployment
+        match:
+          alertname: KubePodCrashLooping
+        match_re:
+          namespace: 'monitor'
+        actions:
+          - type: k8s_rollout_restart
+            kind: deployment
+            namespace: "{{ labels.namespace }}"
+            name: "{{ labels.deployment }}"
+          - type: http
+            method: POST
+            url: http://webhook-sink.monitor.svc:8080/notify
+            body:
+              text: "restarted {{ labels.namespace }}/{{ labels.deployment }} after {{ labels.alertname }}"
+      # Queue backlog: scale the workers up, once.
+      - name: scale-out-workers
+        match:
+          alertname: CeleryQueueBacklog
+          severity: warning
+        cooldown: 1800
+        actions:
+          - type: k8s_scale
+            kind: deployment
+            namespace: "{{ labels.namespace }}"
+            name: "{{ labels.deployment }}"
+            replicas: 4
+      # A runbook is a script from the mounted ConfigMap, with a credential
+      # handed to it by name - the value never appears in a rule or a log.
+      - name: recycle-via-runbook
+        match:
+          alertname: KubeDeploymentReplicasMismatch
+        cooldown: 1800
+        actions:
+          - type: runbook
+            name: recycle-deployment.sh
+            args: ["{{ labels.namespace }}", "{{ labels.deployment }}"]
+            secret_env:
+              KUBECONFIG: kubeconfig
+          - type: http
+            method: POST
+            url: https://chat.example/hooks/alerts
+            headers:
+              Authorization: "Bearer {{ secrets.chat-token }}"
+            body:
+              text: "recycled {{ labels.namespace }}/{{ labels.deployment }}"
+
+      # Everything else just gets a line in the log.
+      - name: log-everything
+        status: any
+        cooldown: 0
+        actions:
+          - type: log
+            message: "{{ status }} {{ labels.alertname }} on {{ labels.instance }}: {{ annotations.summary }}"

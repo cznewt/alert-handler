@@ -1,0 +1,15 @@
+services:
+  alert-handler:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    image: ghcr.io/cznewt/alert-handler:latest
+    environment:
+      CONFIG_FILE: /etc/alert-handler/config.yaml
+      LOG_LEVEL: INFO
+    volumes:
+      # Edit docker/config.yaml and `docker compose restart` to try rules out.
+      - ./docker/config.yaml:/etc/alert-handler/config.yaml:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

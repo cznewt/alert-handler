@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: alert-handler
+  title: Alert Handler
+  description: 'Alertmanager webhook receiver that matches alerts against rules and runs actions: an HTTP call, a command, a runbook script, a log line, a Kubernetes write, a Salt call or an LLM question. Runbooks and credentials are mounted directories, so a new procedure is a config change.'
+  tags:
+    - monitoring
+    - alerting
+    - alertmanager
+    - remediation
+    - kubernetes
+  links:
+    - url: https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
+      title: Alertmanager webhook receiver
+    - url: https://prometheus.io/docs/alerting/latest/clients/
+      title: Webhook payload reference
+  annotations:
+    github.com/project-slug: cznewt/alert-handler
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  lifecycle: production
+  owner: group:monitor

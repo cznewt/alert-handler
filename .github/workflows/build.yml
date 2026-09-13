@@ -1,0 +1,24 @@
+name: Build alert-handler
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - docker/**
+      - VERSION
+      - .github/workflows/**
+
+jobs:
+  build-alert-handler:
+    name: "Build alert-handler"
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/docker-publish.yml
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    secrets: inherit
+    with:
+      APP_NAME: alert-handler
+      APP_DIR: docker

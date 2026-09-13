@@ -1,0 +1,49 @@
+site_name: Alert Handler
+site_description: An Alertmanager webhook receiver that runs actions - HTTP, commands, runbooks, Kubernetes writes, Salt, an LLM.
+repo_url: https://github.com/cznewt/alert-handler
+repo_name: cznewt/alert-handler
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting started:
+    - Install: install.md
+    - Run: run.md
+    - Usage: usage.md
+  - Configuration: configuration.md
+  - Reference: reference.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences

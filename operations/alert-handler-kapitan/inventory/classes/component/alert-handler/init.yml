@@ -1,0 +1,88 @@
+parameters:
+  _param_:
+    kubernetes_manifests:
+      - component/alert-handler/manifests.jsonnet
+    alert_handler_image: ghcr.io/cznewt/alert-handler
+    alert_handler_version: 2026.9-r4
+    # Ships in dry-run: the handler logs what it would have done until a site
+    # has reviewed the rules and set an allowed_namespaces list.
+    alert_handler_settings:
+      dry_run: true
+      cooldown: 300
+      action_timeout: 30
+      workers: 4
+      allowed_namespaces: []
+      # salt-api for the salt_* actions. Empty url = unconfigured, and those
+      # actions fail with that message instead of half-trying. The password is
+      # a credential file, never a value here.
+      salt:
+        url: ""
+        eauth: rest
+        username: alert-handler
+        password_secret: salt-password
+        verify_tls: true
+        timeout: 60
+        allowed_targets: []
+      # An OpenAI-compatible endpoint (LiteLLM, vLLM, Ollama's /v1 shim). The
+      # llm action writes its answer into {{ llm.answer }} for the next action
+      # in the rule; empty url = unconfigured.
+      llm:
+        url: ""
+        model: ""
+        api_key_secret: llm-api-key
+        max_tokens: 400
+        temperature: 0.2
+        timeout: 60
+    alert_handler_rules:
+      - name: log-everything
+        status: any
+        cooldown: 0
+        actions:
+          - type: log
+            message: "{{ status }} {{ labels.alertname }} ({{ labels.severity }}) on {{ labels.instance }}: {{ annotations.summary }}"
+    # ClusterRole rules, the minimum the shipped k8s_* actions need. Cut this
+    # down (or set `rbac: false` below) for a handler that only logs and posts.
+    alert_handler_rbac_rules:
+      - apiGroups: ['apps']
+        resources: ['deployments', 'statefulsets', 'daemonsets']
+        verbs: ['get', 'list', 'patch']
+      - apiGroups: ['apps']
+        resources: ['deployments/scale', 'statefulsets/scale']
+        verbs: ['get', 'patch', 'update']
+      - apiGroups: ['']
+        resources: ['pods']
+        verbs: ['get', 'list', 'delete']
+      - apiGroups: ['']
+        resources: ['nodes']
+        verbs: ['get', 'list', 'patch']
+    # Runbook scripts, one map entry per file, rendered into a ConfigMap mounted
+    # at /etc/alert-handler/runbooks. An empty map = an empty directory.
+    alert_handler_runbooks: {}
+    # Name of an EXISTING Secret holding credentials, one key per credential,
+    # mounted at /etc/alert-handler/secrets. Actions reach them by name, as
+    # `{{ secrets.<key> }}` or an action's `secret_env`. Empty = none mounted.
+    alert_handler_secret_name: ""
+    alert_handler_env_vars: {}
+  alert-handler:
+    server:
+      replicas: 1
+      rbac: true
+      settings: ${_param_:alert_handler_settings}
+      rules: ${_param_:alert_handler_rules}
+      rbac_rules: ${_param_:alert_handler_rbac_rules}
+      runbooks: ${_param_:alert_handler_runbooks}
+      secret_name: ${_param_:alert_handler_secret_name}
+      container:
+        image: ${_param_:alert_handler_image}
+        version: ${_param_:alert_handler_version}
+      env_vars: ${_param_:alert_handler_env_vars}
+      config:
+        # The config is mounted as a FILE (subpath), not over the directory:
+        # /etc/alert-handler also holds the runbooks and secrets mount points,
+        # and a ConfigMap volume over the parent is read-only, so the kubelet
+        # could not create those directories inside it.
+        service:
+          mountpath: /etc/alert-handler/config.yaml
+          subpath: config.yaml
+        runbooks:
+          mountpath: /etc/alert-handler/runbooks

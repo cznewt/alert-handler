@@ -1,0 +1,39 @@
+name: CI
+
+# Test on every PR and on non-main pushes, and confirm the image still builds.
+# Pushes to main go through build.yml, which also publishes the image to ghcr.
+on:
+  pull_request:
+  push:
+    branches-ignore: ["main"]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: docker/requirements.txt
+      - name: Install dependencies
+        run: pip install -r docker/requirements.txt pytest
+      - name: Run tests
+        run: pytest -q
+
+  build:
+    name: Build image (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

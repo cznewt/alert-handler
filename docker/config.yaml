@@ -1,0 +1,52 @@
+# Default rule set baked into the image: safe, and enough to show the shape.
+# Override it with a mounted config.yaml (Kapitan/Helm render one into a
+# ConfigMap from the `rules` inventory parameter).
+#
+# Placeholders: {{ labels.<name> }}, {{ annotations.<name> }}, {{ status }},
+# {{ fingerprint }}, {{ startsAt }}, {{ endsAt }}, {{ generatorURL }},
+# {{ receiver }}, {{ externalURL }}, {{ groupKey }}, {{ secrets.<name> }}.
+
+settings:
+  # Log the actions instead of running them. Start here on a new cluster.
+  dry_run: true
+  # Seconds a (rule, alert) pair stays silent after it fires, so a flapping
+  # alert cannot restart a deployment every 30 seconds.
+  cooldown: 300
+  action_timeout: 30
+  workers: 4
+  # Empty = any namespace. Set an allow-list before turning dry_run off.
+  allowed_namespaces: []
+  # Bearer token required on the webhook; WEBHOOK_TOKEN overrides it, and
+  # auth_token_secret names a file in the credentials directory instead.
+  auth_token: ""
+  auth_token_secret: ""
+
+rules:
+  - name: log-everything
+    # `match`/`match_re` are ANDed against the alert labels; both empty = all.
+    status: any
+    cooldown: 0
+    actions:
+      - type: log
+        message: "{{ status }} {{ labels.alertname }} ({{ labels.severity }}) on {{ labels.instance }}: {{ annotations.summary }}"
+
+  # A runbook is a script in the runbook directory (mount a ConfigMap there);
+  # credentials are files in the secrets directory (mount a Secret there) and
+  # reach an action only by name. Both are redacted from the logs.
+  #
+  # - name: recycle-crashlooping-deployment
+  #   match:
+  #     alertname: KubePodCrashLooping
+  #   actions:
+  #     - type: runbook
+  #       name: recycle-deployment.sh
+  #       args: ["{{ labels.namespace }}", "{{ labels.deployment }}"]
+  #       secret_env:
+  #         KUBE_TOKEN: kube-token        # file name in the secrets directory
+  #     - type: http
+  #       method: POST
+  #       url: https://chat.example/hooks/alerts
+  #       headers:
+  #         Authorization: "Bearer {{ secrets.chat-token }}"
+  #       body:
+  #         text: "recycled {{ labels.namespace }}/{{ labels.deployment }}"

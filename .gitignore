@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.egg-info/
+.pytest_cache/
+.coverage
+dist/
+build/
+# mkdocs build output (just docs-build)
+site/

@@ -1,0 +1,91 @@
+image:
+  repository: ghcr.io/cznewt/alert-handler
+  tag: ""                 # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 1
+
+# Rendered verbatim into the ConfigMap the handler reads. `settings` and
+# `rules` are the whole configuration language; see the component README.
+settings:
+  dry_run: true
+  cooldown: 300
+  action_timeout: 30
+  workers: 4
+  allowed_namespaces: []
+
+rules:
+  - name: log-everything
+    status: any
+    cooldown: 0
+    actions:
+      - type: log
+        message: "{{ status }} {{ labels.alertname }} ({{ labels.severity }}) on {{ labels.instance }}: {{ annotations.summary }}"
+
+# Runbook scripts, one entry per file, rendered into a ConfigMap mounted at
+# /etc/alert-handler/runbooks. A `runbook` action names the file. ConfigMap keys
+# mount 0644, so the handler runs a non-executable script through /bin/sh.
+runbooks: {}
+#  recycle-deployment.sh: |
+#    #!/bin/sh
+#    set -eu
+#    kubectl -n "$1" rollout restart "deployment/$2"
+
+# Name of an EXISTING Secret holding credentials, one key per credential,
+# mounted read-only at /etc/alert-handler/secrets. Actions reach them by name -
+# `{{ secrets.<key> }}` in any field, or `secret_env` on exec/runbook - and the
+# values are redacted from the logs. Empty = no credentials mounted.
+secretName: ""
+
+# Webhook bearer token. Kept out of the ConfigMap: point this at a Secret with
+# a WEBHOOK_TOKEN key, or name a credential with `settings.auth_token_secret`,
+# or leave it empty on a network where only Alertmanager can reach it.
+envFromSecret: ""
+
+env: {}
+
+rbac:
+  # Off by default: only needed for the k8s_* actions.
+  create: false
+  rules:
+    - apiGroups: ["apps"]
+      resources: ["deployments", "statefulsets", "daemonsets"]
+      verbs: ["get", "list", "patch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments/scale", "statefulsets/scale"]
+      verbs: ["get", "patch", "update"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "delete"]
+    - apiGroups: [""]
+      resources: ["nodes"]
+      verbs: ["get", "list", "patch"]
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Scraped by a plain Prometheus and by the k8s-monitoring Alloy.
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+  k8s.grafana.com/scrape: "true"
+  k8s.grafana.com/metrics.portNumber: "8080"
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

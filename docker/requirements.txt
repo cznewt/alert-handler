@@ -1,0 +1,4 @@
+# Deliberately tiny: the Kubernetes and HTTP actions use urllib from the stdlib,
+# so there is no SDK to keep in step with the cluster version.
+PyYAML==6.0.2
+prometheus-client==0.21.1

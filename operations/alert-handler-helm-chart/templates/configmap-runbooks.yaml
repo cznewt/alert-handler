@@ -1,0 +1,13 @@
+{{- if .Values.runbooks }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alert-handler.fullname" . }}-runbooks
+  labels:
+    {{- include "alert-handler.labels" . | nindent 4 }}
+data:
+  {{- range $name, $script := .Values.runbooks }}
+  {{ $name }}: |
+    {{- $script | nindent 4 }}
+  {{- end }}
+{{- end }}

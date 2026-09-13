@@ -1,0 +1,27 @@
+name: alert-handler
+version: 2026.9-r4
+schema:
+  alert_handler_image:
+    type: string
+    default: ghcr.io/cznewt/alert-handler
+  alert_handler_version:
+    type: string
+    default: 2026.9-r4
+  alert_handler_settings:
+    type: dict
+    optional: true
+  alert_handler_rules:
+    type: list
+    optional: true
+  alert_handler_rbac_rules:
+    type: list
+    optional: true
+  alert_handler_runbooks:
+    type: dict
+    optional: true
+  alert_handler_secret_name:
+    type: string
+    optional: true
+  alert_handler_env_vars:
+    type: dict
+    optional: true

@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "alert-handler.fullname" . }}
+  labels:
+    {{- include "alert-handler.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "alert-handler.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "alert-handler.labels" . | nindent 8 }}
+      annotations:
+        # The config is read at start-up, so a ConfigMap edit has to roll the pod.
+        checksum/config: {{ include "alert-handler.config" . | sha256sum }}
+        {{- if .Values.runbooks }}
+        checksum/runbooks: {{ toYaml .Values.runbooks | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "alert-handler.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: handler
+          image: {{ include "alert-handler.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: HTTP_PORT
+              value: {{ .Values.service.port | quote }}
+            - name: CONFIG_FILE
+              value: /etc/alert-handler/config.yaml
+            {{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- if .Values.envFromSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.envFromSecret }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          volumeMounts:
+            # A file, not the directory: the runbooks and secrets mount points
+            # live in /etc/alert-handler and a ConfigMap volume over the parent
+            # is read-only, so they could not be created inside it.
+            - name: config
+              mountPath: /etc/alert-handler/config.yaml
+              subPath: config.yaml
+            {{- if .Values.runbooks }}
+            - name: runbooks
+              mountPath: /etc/alert-handler/runbooks
+            {{- end }}
+            {{- if .Values.secretName }}
+            - name: secrets
+              mountPath: /etc/alert-handler/secrets
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "alert-handler.fullname" . }}
+        {{- if .Values.runbooks }}
+        - name: runbooks
+          configMap:
+            name: {{ include "alert-handler.fullname" . }}-runbooks
+            defaultMode: 0555
+        {{- end }}
+        {{- if .Values.secretName }}
+        - name: secrets
+          secret:
+            secretName: {{ .Values.secretName }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
