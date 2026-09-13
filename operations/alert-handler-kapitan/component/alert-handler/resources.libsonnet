@@ -105,6 +105,10 @@ local kube = import 'kapitannet/k8s/resources.libsonnet';
         },
         spec+: {
           serviceAccountName: service.name,
+          // a private registry: name an EXISTING docker-registry Secret in the namespace.
+          // Not `pull_secrets`: the base library renders a Secret for that key, and
+          // with no token in the inventory it would overwrite the real one.
+          imagePullSecrets: if std.objectHas(service, 'pull_secret_name') && service.pull_secret_name != '' then [{ name: service.pull_secret_name }] else [],
           volumes_+: if secret_name(service) != '' then {
             secrets: {
               secret: {
