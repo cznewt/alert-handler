@@ -3,6 +3,7 @@ name: CI
 # Test on every PR and on non-main pushes, and confirm the image still builds.
 # Pushes to main go through build.yml, which also publishes the image to ghcr.
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches-ignore: ["main"]
