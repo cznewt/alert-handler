@@ -26,6 +26,7 @@ local kube = import 'kapitannet/k8s/resources.libsonnet';
   configmap_service: this.ServiceConfigMap,
   configmap_runbooks: this.RunbooksConfigMap,
   service_account: kube.ServiceAccount,
+  secret_basic_auth: kube.BasicAuthSecret,
   // Both are gated by `rbac: false` in the inventory, for a handler that only
   // runs log/http/exec actions and has no business talking to the API server.
   cluster_role: this.ClusterRole,

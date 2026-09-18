@@ -1,0 +1,12 @@
+classes:
+  - component.alert-handler
+parameters:
+  _param_:
+    alert_handler_basic_auth_realm: Authentication Required
+    alert_handler_basic_auth_users: ''
+  alert-handler:
+    server:
+      secret:
+        basic_auth:
+          realm: ${_param_:alert_handler_basic_auth_realm}
+          users: ${_param_:alert_handler_basic_auth_users}

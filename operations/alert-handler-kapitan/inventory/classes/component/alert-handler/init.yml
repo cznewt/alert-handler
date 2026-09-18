@@ -62,12 +62,24 @@ parameters:
     # mounted at /etc/alert-handler/secrets. Actions reach them by name, as
     # `{{ secrets.<key> }}` or an action's `secret_env`. Empty = none mounted.
     alert_handler_secret_name: ""
+    # a host makes the base render an Ingress; component.alert-handler.auth.basic puts a login on it
+    alert_handler_host: ""
+    alert_handler_tls: false
+    alert_handler_cert_issuer: ""
     alert_handler_env_vars: {}
     # name of a docker-registry Secret in the namespace, for a private image; empty = none
     alert_handler_pull_secret: ""
   alert-handler:
     server:
       replicas: 1
+      ingress:
+        host: ${_param_:alert_handler_host}
+        tls: ${_param_:alert_handler_tls}
+        cert_issuer: ${_param_:alert_handler_cert_issuer}
+        # the service port is named http, not the base's default 'service'
+        paths:
+          - path: /
+            backend: alert-handler-server:http
       rbac: true
       settings: ${_param_:alert_handler_settings}
       rules: ${_param_:alert_handler_rules}
