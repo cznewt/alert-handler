@@ -6,7 +6,7 @@ description: >-
   (rollout restart, scale, delete pod, cordon node, annotate).
 type: application
 version: 0.1.0
-appVersion: "2026.9-r6"
+appVersion: "2026.9-r7"
 keywords:
   - monitoring
   - alerting

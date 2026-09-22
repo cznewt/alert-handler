@@ -1,0 +1,13 @@
+# Opt-in, with auth.basic behind ingress-nginx: pass the login's user name to
+# the handler as X-Forwarded-User, so /approvals and /incidents record who
+# approved or resolved. Needs `allow-snippet-annotations: "true"` on the
+# controller; without it the Ingress is refused, so it is a class of its own.
+classes:
+  - component.alert-handler.auth.basic
+parameters:
+  alert-handler:
+    server:
+      ingress:
+        annotations:
+          nginx.ingress.kubernetes.io/configuration-snippet: |
+            proxy_set_header X-Forwarded-User $remote_user;

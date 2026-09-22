@@ -2181,8 +2181,14 @@ class Handler(BaseHTTPRequestHandler):
         self._respond(200, body, "text/html; charset=utf-8")
 
     def _token_field(self):
-        """With a webhook token set, the forms ask for it (a browser sends no bearer)."""
-        return "<input type=\"password\" name=\"token\" placeholder=\"token\" size=\"10\"> " if self.dispatcher.auth_token else ""
+        """Extra form fields: the webhook token when one is set (a browser sends no
+        bearer), and a name when nothing in front of the handler says who this is."""
+        fields = ""
+        if self._actor({}) == "anonymous":
+            fields += "<input name=\"by\" placeholder=\"your name\" size=\"12\"> "
+        if self.dispatcher.auth_token:
+            fields += "<input type=\"password\" name=\"token\" placeholder=\"token\" size=\"10\"> "
+        return fields
 
     def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler API
         path = self.path.split("?", 1)[0]

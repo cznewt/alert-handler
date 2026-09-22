@@ -97,10 +97,15 @@ Any action takes `approval: required` (or `true`); the default is `auto`.
 - **What is saved** is the template namespace so far, without `secrets` and
   with every credential value redacted. After an approval, `{{ last.stdout }}`
   still works, but a secret a runbook printed reads `***`.
-- **Who decided** is taken from the login in front of the handler (the user of
-  an `Authorization: Basic` header that an ingress login passes through, or
-  `X-Forwarded-User` from an auth proxy), else the form's `by` field. It lands
-  in `{{ approval.by }}`, on the incident and in the ticket.
+- **Who decided** is taken from the login in front of the handler:
+  `X-Forwarded-User` (or `X-Auth-Request-User`, `X-Remote-User`) set by an auth
+  proxy, or the user of an `Authorization: Basic` header that reaches the
+  handler. ingress-nginx's basic auth passes neither on by itself; the
+  Kapitan class `component.alert-handler.auth.forward-user` adds the snippet
+  that sets `X-Forwarded-User` from the login. Without any of them the forms
+  ask for a name. It lands in `{{ approval.by }}`, on the incident and in the
+  ticket. These headers are trusted as sent, so only a proxy should be able to
+  reach the pages.
 - **One question per step**: while an approval is pending, the same alert
   firing again does not ask a second time.
 - **They end** by approval, rejection, expiry after `approvals.ttl`, or

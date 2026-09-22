@@ -112,3 +112,15 @@ def test_resolve_from_the_incident_page(serve):
     assert closed["state"] == "closed" and closed["closed_by"] == "ana" and closed["close_reason"] == "scaled up"
     assert json.loads(call(base + "/approvals?format=json")[1])[0]["state"] == "cancelled"
     assert call(base + "/incidents/nope/resolve", "POST", form(), {"Content-Type": "application/x-www-form-urlencoded"})[0] == 404
+
+
+def test_forms_ask_for_a_name_only_when_nobody_is_known(serve):
+    base = serve(rules=GATED)
+    call(base + "/alert", "POST", payload(alert(pod="p-7")))
+    record = wait_for_approval(base)
+    assert 'name="by"' in call(base + "/approvals")[1]
+    assert 'name="by"' not in call(base + "/approvals", headers={"X-Forwarded-User": "ana"})[1]
+    status, _, _ = call(base + "/approvals/%s/approve" % record["id"], "POST", form(),
+                        {"X-Forwarded-User": "ana", "Content-Type": "application/x-www-form-urlencoded"})
+    assert status == 200
+    assert json.loads(call(base + "/approvals/%s?format=json" % record["id"])[1])["decided_by"] == "ana"
