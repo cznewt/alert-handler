@@ -5,6 +5,9 @@ import json
 import os
 import sys
 import threading
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -162,3 +165,37 @@ def payload(*alerts):
         "groupKey": '{}:{alertname="TestAlert"}',
         "externalURL": "http://alertmanager:9093",
     }
+
+
+@pytest.fixture
+def serve(config_file):
+    """Start the real HTTP server for a config; serve(settings=..., rules=...) -> base url."""
+    started = []
+
+    def _start(settings=None, rules=None):
+        dispatcher = ah.Dispatcher(ah.load_config(config_file(settings=settings, rules=rules)))
+        pool = ThreadPoolExecutor(max_workers=2)
+        ah.Handler.dispatcher = dispatcher
+        ah.Handler.pool = pool
+        server = ThreadingHTTPServer(("127.0.0.1", 0), ah.Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        started.append((server, pool))
+        return "http://127.0.0.1:%d" % server.server_address[1]
+
+    yield _start
+    for server, pool in started:
+        server.shutdown()
+        server.server_close()
+        pool.shutdown(wait=True)
+
+
+def call(url, method="GET", body=None, headers=None):
+    data = json.dumps(body).encode() if isinstance(body, dict) else body
+    request = urllib.request.Request(url, data=data, method=method)
+    for key, value in (headers or {}).items():
+        request.add_header(key, value)
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return response.status, response.read().decode(), response.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as error:
+        return error.code, error.read().decode(), error.headers.get("Content-Type", "")

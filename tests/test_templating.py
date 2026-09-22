@@ -63,3 +63,11 @@ def test_alert_id_is_stable_and_sorted():
 
 def test_summarise_hides_private_keys():
     assert json.loads(ah._summarise({"url": "u", "_rule": "r"})) == {"url": "u"}
+
+
+def test_preview_keeps_what_is_not_known_yet(caplog):
+    from conftest import ah
+    with caplog.at_level("WARNING", logger="alert-handler"):
+        text = ah.render("{{ labels.pod }} approved by {{ approval.by }}", {"labels": {"pod": "p-1"}}, preview=True)
+    assert text == "p-1 approved by {{ approval.by }}"
+    assert "not set" not in caplog.text

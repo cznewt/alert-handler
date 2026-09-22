@@ -106,6 +106,9 @@ local kube = import 'kapitannet/k8s/resources.libsonnet';
         },
         spec+: {
           serviceAccountName: service.name,
+          // The state volume (component.alert-handler.state) must be writable
+          // by the image's user on storage that does not open it to everyone.
+          [if std.objectHas(service, 'volume') then 'securityContext']: { fsGroup: 10001 },
           // a private registry: name an EXISTING docker-registry Secret in the namespace.
           // Not `pull_secrets`: the base library renders a Secret for that key, and
           // with no token in the inventory it would overwrite the real one.

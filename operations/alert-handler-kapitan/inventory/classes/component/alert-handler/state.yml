@@ -1,0 +1,18 @@
+# Opt-in: a volume for the handler's state, so incidents and approvals that wait
+# for a person survive a restart (settings.state_file). Without this class they
+# live in memory. See docs/incidents.md.
+classes:
+  - component.alert-handler
+parameters:
+  _param_:
+    alert_handler_state_storage_size: 1Gi
+    alert_handler_state_hostpath: ""
+    alert_handler_settings:
+      state_file: /var/lib/alert-handler/state.json
+  alert-handler:
+    server:
+      volume:
+        state:
+          storage_size: ${_param_:alert_handler_state_storage_size}
+          hostpath: ${_param_:alert_handler_state_hostpath}
+          mountpath: /var/lib/alert-handler

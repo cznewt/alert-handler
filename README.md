@@ -10,8 +10,14 @@ Kubernetes, or a question to an LLM whose answer the next action can use.
 It is the small end of the remediation spectrum: the things that do not deserve
 their own operator, but that somebody currently does by hand at 3am.
 
+When an alert needs a person, a rule with `incident: true` runs the whole
+lifecycle: an Alertmanager silence so it stops paging, automatic mitigations,
+steps that wait for a person's approval, a Jira ticket, and a person closing it
+- in Jira or on the handler's `/incidents` page - which lifts the silences
+again. See [Incidents](docs/incidents.md).
+
 Documentation: [Install](docs/install.md) · [Run](docs/run.md) ·
-[Configuration](docs/configuration.md) · [Usage](docs/usage.md) ·
+[Configuration](docs/configuration.md) · [Incidents](docs/incidents.md) · [Usage](docs/usage.md) ·
 [Reference](docs/reference.md) - published at
 <https://cznewt.github.io/alert-handler/>.
 

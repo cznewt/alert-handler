@@ -78,6 +78,10 @@ spec:
               mountPath: /etc/alert-handler/secrets
               readOnly: true
             {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: state
+              mountPath: /var/lib/alert-handler
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           securityContext:
@@ -88,6 +92,7 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
+        fsGroup: 10001
       volumes:
         - name: config
           configMap:
@@ -102,6 +107,11 @@ spec:
         - name: secrets
           secret:
             secretName: {{ .Values.secretName }}
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: state
+          persistentVolumeClaim:
+            claimName: {{ include "alert-handler.fullname" . }}-state
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

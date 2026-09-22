@@ -3,9 +3,13 @@ parameters:
     kubernetes_manifests:
       - component/alert-handler/manifests.jsonnet
     alert_handler_image: ghcr.io/cznewt/alert-handler
-    alert_handler_version: 2026.9-r4
+    alert_handler_version: 2026.9-r6
     # Ships in dry-run: the handler logs what it would have done until a site
     # has reviewed the rules and set an allowed_namespaces list.
+    # Incidents, approvals, silences and Jira (docs/incidents.md) are all in
+    # these settings too: public_url, alertmanager, jira, approvals, incidents.
+    # Add the class component.alert-handler.state for a volume that keeps
+    # incidents and pending approvals across restarts.
     alert_handler_settings:
       dry_run: true
       cooldown: 300

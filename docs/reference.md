@@ -6,8 +6,12 @@
 | :--- | :--- | :--- |
 | `/alert`, `/alerts`, `/webhook`, `/` | POST | Alertmanager webhook receiver. Answers `202 {"queued": n}` as soon as the actions are queued. |
 | `/metrics` | GET | Prometheus metrics. |
-| `/rules` | GET | The rules as parsed: name, matchers, status, cooldown, action types. |
+| `/rules` | GET | The rules as parsed: name, matchers, status, cooldown, `incident`, action types, and which of them are `gated`. |
 | `/runbooks` | GET | Names of the scripts in the runbook directory. |
+| `/approvals`, `/approvals/<id>` | GET | Steps waiting for a person, and decisions; HTML, or JSON with `?format=json`. |
+| `/approvals/<id>/approve`, `/approvals/<id>/reject` | POST | A person decides. See [Incidents](incidents.md#pages-and-endpoints). |
+| `/incidents`, `/incidents/<id>` | GET | Incidents with their silences, tickets and timelines. |
+| `/incidents/<id>/resolve` | POST | A person closes an incident. |
 | `/healthz`, `/-/healthy` | GET | Liveness. |
 | `/-/ready`, `/readyz` | GET | Readiness; `503` until rules are loaded. |
 | `/` | GET | One-line hint. |
@@ -25,7 +29,7 @@ run twice. Failures are visible in the metrics and the log instead.
 | `alert_handler_webhook_requests_total` | counter | `result` | `accepted`, `unauthorised`, `bad_request`, `error`. |
 | `alert_handler_alerts_total` | counter | `status` | Alerts unpacked from the payloads, by alert status. |
 | `alert_handler_rule_matches_total` | counter | `rule` | Alerts each rule matched. |
-| `alert_handler_actions_total` | counter | `rule`, `action`, `result` | `success`, `failure`, `cooldown`, `dry_run`, `skipped` (the rest of a chain after a failure). `action` is the type, so `salt_state_apply` or `llm` failures are visible on their own. |
+| `alert_handler_actions_total` | counter | `rule`, `action`, `result` | `success`, `failure`, `cooldown`, `dry_run`, `skipped` (the rest of a chain after a failure), `awaiting_approval` (a gated step paused). `action` is the type, so `salt_state_apply` or `llm` failures are visible on their own. |
 | `alert_handler_action_duration_seconds` | histogram | `rule`, `action` | Action wall-clock time. |
 | `alert_handler_actions_inflight` | gauge | — | Actions executing right now. |
 | `alert_handler_config_rules` | gauge | — | Rules in the loaded config. |
@@ -33,6 +37,9 @@ run twice. Failures are visible in the metrics and the log instead.
 | `alert_handler_config_valid` | gauge | — | `0` after a rejected reload: the running config is stale. |
 | `alert_handler_secrets_loaded` | gauge | — | Credentials read from the secrets directory. |
 | `alert_handler_runbooks_available` | gauge | — | Scripts present in the runbook directory. |
+| `alert_handler_incidents` | gauge | `state` | Incidents by state: `open`, `alert_resolved`, `closed`. |
+| `alert_handler_approvals_pending` | gauge | — | Steps waiting for a person. |
+| `alert_handler_approval_decisions_total` | counter | `decision` | `approved`, `rejected`, `expired`, `cancelled`. |
 
 ### Rules worth having
 

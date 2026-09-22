@@ -36,6 +36,7 @@ nav:
     - Run: run.md
     - Usage: usage.md
   - Configuration: configuration.md
+  - Incidents: incidents.md
   - Reference: reference.md
 
 markdown_extensions:

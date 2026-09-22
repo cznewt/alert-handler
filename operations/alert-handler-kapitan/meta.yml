@@ -1,12 +1,12 @@
 name: alert-handler
-version: 2026.9-r4
+version: 2026.9-r6
 schema:
   alert_handler_image:
     type: string
     default: ghcr.io/cznewt/alert-handler
   alert_handler_version:
     type: string
-    default: 2026.9-r4
+    default: 2026.9-r6
   alert_handler_settings:
     type: dict
     optional: true

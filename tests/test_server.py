@@ -1,47 +1,6 @@
 import json
-import threading
-import urllib.error
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor
-from http.server import ThreadingHTTPServer
 
-import pytest
-
-from conftest import ah, alert, payload
-
-
-@pytest.fixture
-def serve(config_file):
-    """Start the real HTTP server for a config; serve(settings=..., rules=...) -> base url."""
-    started = []
-
-    def _start(settings=None, rules=None):
-        dispatcher = ah.Dispatcher(ah.load_config(config_file(settings=settings, rules=rules)))
-        pool = ThreadPoolExecutor(max_workers=2)
-        ah.Handler.dispatcher = dispatcher
-        ah.Handler.pool = pool
-        server = ThreadingHTTPServer(("127.0.0.1", 0), ah.Handler)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        started.append((server, pool))
-        return "http://127.0.0.1:%d" % server.server_address[1]
-
-    yield _start
-    for server, pool in started:
-        server.shutdown()
-        server.server_close()
-        pool.shutdown(wait=True)
-
-
-def call(url, method="GET", body=None, headers=None):
-    data = json.dumps(body).encode() if isinstance(body, dict) else body
-    request = urllib.request.Request(url, data=data, method=method)
-    for key, value in (headers or {}).items():
-        request.add_header(key, value)
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:
-            return response.status, response.read().decode(), response.headers.get("Content-Type", "")
-    except urllib.error.HTTPError as error:
-        return error.code, error.read().decode(), error.headers.get("Content-Type", "")
+from conftest import alert, call, payload
 
 
 RULES = [{"name": "log", "status": "any", "cooldown": 0, "actions": [{"type": "log", "message": "{{ labels.alertname }}"}]}]
@@ -56,7 +15,8 @@ def test_read_endpoints(serve, workdir):
     assert call(base + "/-/ready")[:2] == (200, "ready\n")
     status, body, ctype = call(base + "/rules")
     assert status == 200 and ctype == "application/json"
-    assert json.loads(body) == [{"name": "log", "match": {}, "match_re": {}, "status": "any", "cooldown": 0, "actions": ["log"]}]
+    assert json.loads(body) == [{"name": "log", "match": {}, "match_re": {}, "status": "any", "cooldown": 0,
+                                 "incident": False, "actions": ["log"], "gated": []}]
     assert json.loads(call(base + "/runbooks")[1]) == ["recycle.sh"]
     status, body, ctype = call(base + "/metrics")
     assert status == 200 and "alert_handler_config_valid 1.0" in body

@@ -24,6 +24,13 @@ rules:
       - type: log
         message: "{{ status }} {{ labels.alertname }} ({{ labels.severity }}) on {{ labels.instance }}: {{ annotations.summary }}"
 
+# A volume for incidents and pending approvals (settings.state_file), so they
+# survive a restart. Off = they live in memory. See docs/incidents.md.
+persistence:
+  enabled: false
+  size: 1Gi
+  storageClass: ""        # empty = the cluster default
+
 # Runbook scripts, one entry per file, rendered into a ConfigMap mounted at
 # /etc/alert-handler/runbooks. A `runbook` action names the file. ConfigMap keys
 # mount 0644, so the handler runs a non-executable script through /bin/sh.

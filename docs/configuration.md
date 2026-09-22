@@ -17,6 +17,7 @@ the configuration.
 | `auth_token_secret` | `""` | Name of a credential file to read that token from instead — keeps it out of the ConfigMap. |
 | `salt` | _(unconfigured)_ | salt-api connection for the `salt_*` actions, see [Salt](#salt). |
 | `llm` | _(unconfigured)_ | OpenAI-compatible endpoint for the `llm` action, see [LLM](#llm). |
+| `public_url`, `state_file`, `alertmanager`, `jira`, `approvals`, `incidents` | _(unconfigured)_ | Incidents, approvals, silences and tickets, see [Incidents](incidents.md#settings). |
 
 ## rules
 
@@ -32,6 +33,7 @@ rules:
     status: firing               # firing (default) | resolved | any
     cooldown: 900                # overrides settings.cooldown
     continue: true               # false = stop after this rule matches
+    incident: false              # true = track an incident per firing alert
     actions: [...]
 ```
 
@@ -43,6 +45,7 @@ rules:
 | `status` | `firing` | `firing`, `resolved` or `any`. |
 | `cooldown` | `settings.cooldown` | Seconds, keyed on (rule, alert fingerprint). `0` disables. |
 | `continue` | `true` | `false` stops rule evaluation for this alert after a match. |
+| `incident` | `false` | `true` opens an incident per firing alert: silences, ticket, timeline, closed by a person. See [Incidents](incidents.md). |
 | `actions` | _(required)_ | At least one; a rule without actions is a config error. |
 
 Cooldown is the flap guard. Alertmanager re-notifies every `repeat_interval`;
@@ -65,9 +68,15 @@ without it, a rule would restart a deployment on every repeat.
 | `salt_cmd` | `tgt`, `tgt_type`, `fun`, `arg`, `kwarg`, `salt_timeout` | Any execution module: `cmd.run`, `service.restart`, `pkg.install`, … |
 | `salt_run` | `fun`, `arg`, `kwarg` | A runner on the master itself: `manage.up`, `state.orchestrate`, … |
 | `llm` | `prompt`, `system`, `model`, `max_tokens`, `temperature`, `url`, `api_key_secret` | Asks an OpenAI-compatible endpoint about the alert and keeps the answer in `{{ llm.answer }}`. |
+| `am_silence` | `duration`, `labels`, `comment`, `url`, `tenant` | Silences the alert in Alertmanager. See [Incidents](incidents.md#silences). |
+| `am_expire` | `id`, `url`, `tenant` | Expires a silence, or every silence the incident set. |
+| `jira_create` | `summary`, `description`, `project`, `issue_type`, `priority`, `labels`, `fields` | Opens a ticket, or comments on the alert's open one. See [Incidents](incidents.md#jira). |
+| `jira_comment` | `body`, `issue` | Comments on the alert's ticket. |
+| `jira_transition` | `transition`, `comment`, `issue` | Moves the alert's ticket. |
 
-Every action also accepts `timeout`, and `continue_on_error: true` to keep the
-rest of the rule running when it fails. The `k8s_*` actions talk to the API server
+Every action also accepts `timeout`, `continue_on_error: true` to keep the
+rest of the rule running when it fails, and `approval: required` to wait for a
+person before it runs ([Approvals](incidents.md#approvals)). The `k8s_*` actions talk to the API server
 with the pod's ServiceAccount token over plain HTTP calls — no vendored SDK to
 keep in step with the cluster version — and refuse namespaces outside
 `allowed_namespaces`.
@@ -81,6 +90,11 @@ use what an earlier one produced:
 | :--- | :--- |
 | `{{ last.stdout }}`, `{{ last.stderr }}`, `{{ last.exit_code }}` | The previous `exec` or `runbook` action. |
 | `{{ llm.answer }}`, `{{ llm.model }}`, `{{ llm.tokens }}` | The previous `llm` action. |
+| `{{ steps }}` | Every action so far in this chain, one line each: what the ticket shows. |
+| `{{ silence.id }}`, `{{ silence.until }}` | The previous `am_silence`. |
+| `{{ jira.key }}`, `{{ jira.url }}`, `{{ jira.created }}` | The previous `jira_*` action. |
+| `{{ incident.id }}`, `{{ incident.url }}` | The rule's incident, with `incident: true`. |
+| `{{ approval.by }}`, `{{ approval.at }}`, `{{ approval.url }}` | The approval that resumed this chain. |
 
 A failed action **stops the rest of the chain** — if the diagnostic did not run
 there is nothing to explain and nothing to announce — and the skipped actions

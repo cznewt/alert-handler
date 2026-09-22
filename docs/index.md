@@ -29,6 +29,7 @@ their own operator, but that somebody currently does by hand at 3am.
 | **Credentials** | A mounted directory of files, usually a Secret. Actions reach them by name — `{{ secrets.<key> }}`, or `secret_env` on a command — and the values are redacted from every log line. |
 | **Salt** | salt-api with a credential, token cached across a burst of alerts, `allowed_targets` globs fencing which minions an action may touch. |
 | **LLM** | Any OpenAI-compatible endpoint. A rule can collect diagnostics, hand them to a model, and post the answer where people read it - the model writes text, the rule decides what happens to it. |
+| **Incidents** | With `incident: true`, one incident per firing alert: an Alertmanager silence so it stops paging, automatic mitigations, gated steps that wait for a person on `/approvals`, a Jira ticket (Cloud or Server) that a re-fire comments on instead of duplicating, and a person closing it - in Jira or on `/incidents` - which lifts the silences again. See [Incidents](incidents.md). |
 | **Chaining** | A rule's actions run in order sharing a namespace, so a later one uses `{{ last.stdout }}` or `{{ llm.answer }}`; a failure stops the chain unless told otherwise. |
 | **Guard rails** | Ships in `dry_run`; per-rule cooldown keyed on the alert fingerprint; `allowed_namespaces` in front of every cluster write and `allowed_targets` in front of every Salt call; an optional bearer token on the webhook. |
 | **Observability** | A metric per action outcome, per rule; the handler is monitored by the same Prometheus it serves. |
@@ -39,6 +40,7 @@ their own operator, but that somebody currently does by hand at 3am.
 - [Run](run.md) — environment, the dry-run loop, reloads, what to watch.
 - [Configuration](configuration.md) — settings, rules, every action type, templating.
 - [Usage](usage.md) — wiring Alertmanager and going from logging to acting.
+- [Incidents](incidents.md) — silences, approvals, Jira tickets and human resolution.
 - [Reference](reference.md) — endpoints and metrics.
 
 A runnable Prometheus → Alertmanager → handler demo lives in the monitor-tools

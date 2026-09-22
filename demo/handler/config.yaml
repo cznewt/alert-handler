@@ -6,6 +6,12 @@ settings:
   action_timeout: 10
   workers: 4
   allowed_namespaces: [] # empty = any namespace; set an allow-list in a cluster
+  # Incidents (docs/incidents.md): links point at the handler's own port, and
+  # silences go to the compose Alertmanager. No Jira here: rule 3 gates a log
+  # line where a real site would gate `jira_create`.
+  public_url: http://localhost:8080
+  alertmanager:
+    url: http://alertmanager:9093
 
 rules:
   # 1. Everything that arrives gets a line, firing and resolved alike.
@@ -44,3 +50,21 @@ rules:
       #   namespace: "{{ labels.namespace }}"
       #   name: "{{ labels.deployment }}"
       #   replicas: 4
+
+  # 3. An incident for the same alert: silence it, note a mitigation, then wait for a person at
+  #    http://localhost:8080/approvals before the step that would open a ticket.
+  #    Resolve it at http://localhost:8080/incidents to lift the silence.
+  - name: demo-incident
+    incident: true
+    match:
+      alertname: DemoWorkloadUnhealthy
+    cooldown: 0
+    actions:
+      - type: am_silence
+        duration: 30m
+        labels: [alertname, namespace, deployment]
+      - type: log
+        message: "mitigation for {{ labels.deployment }} in {{ labels.namespace }} would run here"
+      - type: log
+        approval: required
+        message: "{{ approval.by }} approved: this is where jira_create would open a ticket for {{ labels.alertname }}"

@@ -23,7 +23,7 @@ def actx():
 
 def test_action_log(settings, actx, caplog):
     with caplog.at_level("INFO", logger="alert-handler"):
-        assert ah.action_log({"message": "hello demo"}, settings, actx) == "logged"
+        assert ah.action_log({"message": "hello demo"}, settings, actx) == "logged: hello demo"
     assert "[action:log] hello demo" in caplog.text
 
 

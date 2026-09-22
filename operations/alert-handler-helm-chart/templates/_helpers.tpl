@@ -38,8 +38,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "alert-handler.config" -}}
+{{- $settings := deepCopy (.Values.settings | default dict) -}}
+{{- if .Values.persistence.enabled -}}
+{{- $settings = merge $settings (dict "state_file" "/var/lib/alert-handler/state.json") -}}
+{{- end }}
 settings:
-{{ toYaml .Values.settings | indent 2 }}
+{{ toYaml $settings | indent 2 }}
 rules:
 {{ toYaml .Values.rules | indent 2 }}
 {{- end -}}
